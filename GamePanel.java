@@ -1,69 +1,99 @@
+import javax.swing.JPanel;
 import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
-import java.util.Random;
 
-public class GamePanel extends JPanel implements ActionListener, KeyListener {
+public class GamePanel extends JPanel implements Runnable{
 
-    public static final int WIDTH = 600;
-    public static final int HEIGHT = 600;
-    public static final int BASE_SIZE = 25;
-    boolean running = false;
-    //Movement variables
-    int x = WIDTH/2;
-    int y = HEIGHT/2;
-    int dx;
-    int dy;
-    int speed = 5;
-    int delay = 16;
-    Timer timer;
+    final int WIDTH = 800;
+    final int HEIGHT = 500;
+    final int playerSizeX = 20;
+    final int playerSizeY = 75;
+    //FPS
+    int FPS = 60;
 
-    public GamePanel() { //constructor to setup the GamePanel object
-        setPreferredSize(new Dimension(WIDTH, HEIGHT)); //sets window size
-        setBackground(Color.BLACK); //set background color
-        setFocusable(true); //allows you to press keys
-        addKeyListener(this);
-        startGame();
+    KeyHandler keyH = new KeyHandler();
+    Thread gameThread;
+
+    //set players defualt position
+    int playerX = 25;
+    double playerY = 100;
+    double playerSpeed = .5;
+
+    // setup enemy variables
+    int enemyX = WIDTH - 25;
+    double enemyY = 100;
+    double enemySpeed = .5;
+
+    public GamePanel(){ //controls gamepanel within the window
+        this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        this.setBackground(Color.BLACK);
+        this.setDoubleBuffered(true); //smooths graphics with no buffer
+        this.addKeyListener(keyH); //adds listeners for keys
+        this.setFocusable(true); //controls whether a component can receive keyboard input
+
     }
-    public void startGame() {
-        running = true; //allows game to start running
-        timer = new Timer(delay, this); //delay sets game speed
-        timer.start(); //starts timer
+
+    public void startGameThread(){
+        gameThread = new Thread(this);
+        gameThread.start();
     }
-    public void paintComponent(Graphics g){
-        super.paintComponent(g);
-        if(running){
-            g.setColor(new Color(255, 230, 150));
-            g.fillOval((x)-BASE_SIZE/2, (y)-BASE_SIZE/2, BASE_SIZE, BASE_SIZE);
+
+    @Override
+    public void run() {
+
+        double drawInterval = 100000000/FPS; //0.01666667 seconds
+        double nextDrawTime = System.nanoTime() + drawInterval; //returns java built in timer
+
+        while(gameThread != null){
+
+            //Update character positions
+            update();
+            //draw the screen with updated info
+            repaint();
+            
+            //controls FPS
+            try {
+                double remainingTime = nextDrawTime - System.nanoTime();
+                remainingTime /= 1000000;
+                
+                if (remainingTime < 0) {
+                    remainingTime = 0;
+                }
+
+                Thread.sleep((long) remainingTime);
+                nextDrawTime += drawInterval;
+                
+            } catch (InterruptedException e){
+                e.printStackTrace();
+            }
+
         }
     }
-    public void actionPerformed(ActionEvent e){
-        x += dx;
-        y += dy;
-        repaint();
-    }
-    public void keyPressed(KeyEvent e){
-        int key = e.getKeyCode();
-        if (key == KeyEvent.VK_LEFT){
-            dx = -speed;
-            dy = 0;
-        }  
-        if (key == KeyEvent.VK_RIGHT){
-            dx = speed;
-            dy = 0;
-        } 
-        if (key == KeyEvent.VK_UP){
-            dy = -speed;
-            dx = 0;
-        }   
-        if (key == KeyEvent.VK_DOWN){
-            dy = speed;
-            dy = 0;
-        }  
+    public void update(){
+        System.out.println(playerY);
+        if(playerY > 0 && playerY < (500 - playerSizeY)) {
+            if(keyH.upPressed == true){
+                playerY -= playerSpeed;
+            }
+            else if(keyH.downPressed == true){
+                playerY += playerSpeed;
+            }
+        }
+        else if(playerY <= 0){
+            playerY = 1;
+        }
+        else if(playerY >= (500 - playerSizeY)){
+            playerY = (500 - playerSizeY);
+        }
 
-        // Update position in game loop
-        x += dx * BASE_SIZE;
-        y += dy * BASE_SIZE;
+    }
+    public void paintComponent(Graphics g){
+
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D)g; //extends graphics class to provide better control over coordinates, layout, etc
+        g2.setColor(Color.white);
+        g2.fillRect(playerX, (int)playerY, playerSizeX, playerSizeY);//create player
+        g2.fillRect(enemyX, (int)enemyY, playerSizeX, playerSizeY);//create player
+        g2.dispose(); //helps with memory not necessary
     }
 
 }
